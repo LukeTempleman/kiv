@@ -1,6 +1,6 @@
 # Initialize values
 distance = 1.3
-threshold = 10
+threshold = 15
 count = 20
 c_time = 10
 usercode =''

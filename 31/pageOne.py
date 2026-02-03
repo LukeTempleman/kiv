@@ -662,81 +662,67 @@ class PageOne(Screen):
         print("RCWL-0516 Sensor Active")
         host_N = platform.node()
         print(host_N)
-        # Set a threshold for movement detection
-        movement_threshold = int(float(shared.get_threshold()))  # Adjust this value as needed 
-        
-# Initialize detect variable        
+        # Instead of threshold, use a fixed distance for stop (15cm)
+        stop_distance_cm = 15
+
         if self.countdown_time > 0:
-                current_distance = self.sensor.distance * 100
-                print("current distance")
-                print(current_distance)
+            current_distance = self.sensor.distance * 100
+            print("current distance")
+            print(current_distance)
+            print(self.countdown_time)
+            # Only trigger if someone is within 15cm of the robot
+            if current_distance < stop_distance_cm:
+                print("Person detected within 15cm, stopping robot")
+                minutes, seconds = divmod(self.countdown_time, 60)
+                self.countdown_label.text = f"{minutes:02}:{seconds:02}"
+                self.countdown_time -= 1
+                self.countdown_label.text = "Error: Motion Detected"
+                self.countdown_label.font_size = '35pt'
+                end_time = time.localtime()
+                reason = "Error: Motion Detected (within 15cm)"
+                print(reason)
+                print(end_time)
+                # Turn relay off
                 print(self.countdown_time)
-                print("previous distance")
-                print(self.previous_distance)
-                print("Threshold")
-                print(self.previous_distance - movement_threshold)
-                if  current_distance < self.previous_distance - movement_threshold or current_distance > self.previous_distance + movement_threshold:
-                    print("in motion loop")
-                    
-                    self.previous_distance = current_distance
-                    minutes, seconds = divmod(self.countdown_time, 60)
-                    self.countdown_label.text = f"{minutes:02}:{seconds:02}"
-                    self.countdown_time -= 1
-                    self.countdown_label.text = "Error: Motion Detected"
-                    self.countdown_label.font_size = '35pt'
-                    end_time = time.localtime()
-                    reason = "Error: Motion Detected"
-                    
-                    
-                    print(reason)  
-                    print (end_time)
-                    # Turn relay off
-                    print(self.countdown_time)
-                    print("Motion Relay 20 is deactivated")
-                    lgpio.gpio_write(self.h, 20, True)
-                    lgpio.gpiochip_close(self.h)
-                    Clock.unschedule(self.update_ten_minute_countdown)
-#                    motion_sensor.close()
-                    # Set all LEDs back to blue
-                    self.strip.set_all_pixels(Color(0, 0, 255))
-                    self.strip.show()
-                    mydb = mysql.connector.connect(
+                print("Motion Relay 20 is deactivated")
+                lgpio.gpio_write(self.h, 20, True)
+                lgpio.gpiochip_close(self.h)
+                Clock.unschedule(self.update_ten_minute_countdown)
+                # Set all LEDs back to blue
+                self.strip.set_all_pixels(Color(0, 0, 255))
+                self.strip.show()
+                mydb = mysql.connector.connect(
                     host="localhost",
                     user="root",
                     password="Robot123#",
                     database="robotdb"
-                    )
-                    mycursor = mydb.cursor()
-                    end_time = time.localtime()
-                    print(host_N)
-                    opID =shared.get_operatorId()
-                    
-                    print("op ID is",opID)
-                    self.sensor.close()
-                    
-                    mycursor.execute('insert into device_data (Serial,Start_date,End_date, Diagnostic, Code,Operator_Id,Bed_Id) values (%s,%s,%s,%s,%s,%s,%s)', (host_N, start_time, end_time, 'Fail', reason,opID,shared.get_bedId() ))
-                    mydb.commit()
-                    mycursor.close()
-                    mydb.close()
-                    print("Error DB written")
-                    self.comp = Button(
+                )
+                mycursor = mydb.cursor()
+                end_time = time.localtime()
+                print(host_N)
+                opID = shared.get_operatorId()
+                print("op ID is", opID)
+                self.sensor.close()
+                mycursor.execute('insert into device_data (Serial,Start_date,End_date, Diagnostic, Code,Operator_Id,Bed_Id) values (%s,%s,%s,%s,%s,%s,%s)', (host_N, start_time, end_time, 'Fail', reason, opID, shared.get_bedId()))
+                mydb.commit()
+                mycursor.close()
+                mydb.close()
+                print("Error DB written")
+                self.comp = Button(
                     text="Done",
                     height=70,
-                    halign = 'center',
+                    halign='center',
                     color=(0, 153 / 255, 1, 1),
-                    size_hint = (0.98,0.2),
-                    pos_hint = {"x":0.0,"y":0.0},
-                    #on_release=self.show_hospital_selection
-        )
-                    
-                    self.layout.add_widget(self.comp)
-                    self.comp.bind(on_release=self.show_hospital_selection)
-                    #self.layout.add_widget(self.back_button1)
-                else:   
-                    print("in else")
-                    minutes, seconds = divmod(self.countdown_time, 60)
-                    self.countdown_label.text = f"{minutes:02}:{seconds:02}"
-                    self.countdown_time -= 1
+                    size_hint=(0.98, 0.2),
+                    pos_hint={"x": 0.0, "y": 0.0},
+                )
+                self.layout.add_widget(self.comp)
+                self.comp.bind(on_release=self.show_hospital_selection)
+            else:
+                print("No person within 15cm, continuing countdown")
+                minutes, seconds = divmod(self.countdown_time, 60)
+                self.countdown_label.text = f"{minutes:02}:{seconds:02}"
+                self.countdown_time -= 1
                     
         else:
                 Clock.unschedule(self.update_ten_minute_countdown)
